@@ -158,9 +158,13 @@ async def chat(request: Request):
             return JSONResponse(content={"response": "Sorry, I didn't get a valid response from the model."}, status_code=200)
         
         # ✅ Save chat to database
-        request_user = request.session.get("user")
-        if request_user:
-            save_chat(request_user, user_message, reply)
+        # request_user = request.session.get("user")
+        # if request_user:
+        #     save_chat(request_user, user_message, reply)
+        username = request.session.get("user")
+        if username:
+            save_chat(username, user_message, reply)
+
 
         return {"response": reply}
 
@@ -171,13 +175,26 @@ async def chat(request: Request):
         print("Error:", str(e))
         raise HTTPException(status_code=500, detail="Sorry, I encountered an error processing your request.")
 
+# @app.get("/history", response_class=HTMLResponse)
+# async def chat_history(request: Request):
+#     if not request.session.get("user"):
+#         return RedirectResponse(url="/login")
+
+#     history = get_chat_history(request.session["user"])
+#     return templates.TemplateResponse("history.html", {"request": request, "history": history})
+
 @app.get("/history", response_class=HTMLResponse)
 async def chat_history(request: Request):
-    if not request.session.get("user"):
+    username = request.session.get("user")
+    if not username:
         return RedirectResponse(url="/login")
 
-    history = get_chat_history(request.session["user"])
-    return templates.TemplateResponse("history.html", {"request": request, "history": history})
+    history = get_chat_history(username)
+    return templates.TemplateResponse("history.html", {
+        "request": request,
+        "history": history
+    })
+
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="192.168.28.21", port=8000, reload=True)
+    uvicorn.run("main:app", host=" 192.168.100.106", port=8000, reload=True)
