@@ -7,6 +7,8 @@
 </head>
 <body>
   <div class="chat-box">
+  <h2>My Chat History</h2>
+    <a href="/">← Back to Chat</a>
   {% if history %}
     {% for item in history %}
       <div class="user-msg"><strong>You:</strong> {{ item.question }}</div>
