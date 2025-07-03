@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat History</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="chat-container">
+    <h2>My Chat History</h2>
+    <a href="/">← Back to Chat</a>
+    <div class="chat-box">
+      {% for item in history %}
+        <div class="user-msg"><strong>You:</strong> {{ item.question }}</div>
+        <div class="bot-msg"><strong>Bot:</strong> {{ item.answer }}</div>
+        <div class="timestamp">{{ item.timestamp }}</div>
+        <hr>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>
