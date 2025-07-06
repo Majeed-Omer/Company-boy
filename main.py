@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -7,6 +7,9 @@ from database import get_user, create_user, verify_password, get_db_connection
 from database import get_all_policies
 from database import save_chat
 from database import get_chat_history
+from fastapi import Depends
+
+cached_policies_text = None
 
 import os
 from dotenv import load_dotenv
@@ -18,7 +21,7 @@ load_dotenv()
 
 app = FastAPI()
 
-OLLAMA_API_URL = "http://localhost:11434/api/chat"
+OLLAMA_API_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "company-bot"
 
 app.add_middleware(
@@ -119,58 +122,113 @@ async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login")
 
+# @app.post("/chat")
+# async def chat(request: Request):
+#     try:
+#         data = await request.json()
+#         user_message = data.get("message")
+
+#         if not user_message:
+#             raise HTTPException(status_code=400, detail="Message is required")
+
+#         # Fetch policy content from the database
+#         policies = get_all_policies()
+#         policies_text = "\n\n---\n\n".join([p["content"] for p in policies])
+
+#         # Add dynamic system prompt
+#         system_prompt = (
+#             "You are ACME Telecom's virtual assistant. Answer strictly based on the following monitoring policies:\n\n"
+#             + policies_text
+#             + "\n\nOnly respond with the approved policy information."
+#         )
+
+#         payload = {
+#             "model": MODEL_NAME,
+#             "messages": [
+#                 {"role": "system", "content": system_prompt},
+#                 {"role": "user", "content": user_message}
+#             ],
+#             "stream": False
+#         }
+
+#         response = requests.post(OLLAMA_API_URL, json=payload)
+#         response.raise_for_status()
+#         data = response.json()
+
+#         reply = data.get("message", {}).get("content", "") or data.get("response", "") or data.get("text", "")
+
+#         if not reply:
+#             return JSONResponse(content={"response": "Sorry, I didn't get a valid response from the model."}, status_code=200)
+        
+    
+#         username = request.session.get("user")
+#         if username:
+#             save_chat(username, user_message, reply)
+
+
+#         return {"response": reply}
+
+#     except requests.exceptions.RequestException as e:
+#         print("Error:", str(e))
+#         raise HTTPException(status_code=502, detail="Failed to communicate with the Ollama API")
+#     except Exception as e:
+#         print("Error:", str(e))
+#         raise HTTPException(status_code=500, detail="Sorry, I encountered an error processing your request.")
+
 @app.post("/chat")
 async def chat(request: Request):
     try:
         data = await request.json()
         user_message = data.get("message")
-
         if not user_message:
             raise HTTPException(status_code=400, detail="Message is required")
 
-        # Fetch policy content from the database
-        policies = get_all_policies()
-        policies_text = "\n\n---\n\n".join([p["content"] for p in policies])
+        policies_text = get_cached_policies()  # ✅ Load once
 
-        # Add dynamic system prompt
         system_prompt = (
             "You are ACME Telecom's virtual assistant. Answer strictly based on the following monitoring policies:\n\n"
             + policies_text
             + "\n\nOnly respond with the approved policy information."
         )
 
+        # payload = {
+        #     "model": MODEL_NAME,
+        #     "messages": [
+        #         {"role": "system", "content": system_prompt},
+        #         {"role": "user", "content": user_message}
+        #     ],
+        #     "stream": False
+        # }
+
         payload = {
             "model": MODEL_NAME,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
+            "prompt": f"{system_prompt}\n\nUser: {user_message}\n\nAssistant:",
             "stream": False
         }
 
-        response = requests.post(OLLAMA_API_URL, json=payload)
+        # ⏱ Add timeout
+        response = requests.post(OLLAMA_API_URL, json=payload, timeout=1000)
         response.raise_for_status()
         data = response.json()
 
         reply = data.get("message", {}).get("content", "") or data.get("response", "") or data.get("text", "")
-
         if not reply:
             return JSONResponse(content={"response": "Sorry, I didn't get a valid response from the model."}, status_code=200)
-        
-    
+
         username = request.session.get("user")
         if username:
             save_chat(username, user_message, reply)
 
-
         return {"response": reply}
 
+    except requests.exceptions.Timeout:
+        return JSONResponse(content={"response": "The bot took too long to respond. Please try again."}, status_code=504)
     except requests.exceptions.RequestException as e:
-        print("Error:", str(e))
+        print("Ollama Error:", str(e))
         raise HTTPException(status_code=502, detail="Failed to communicate with the Ollama API")
     except Exception as e:
-        print("Error:", str(e))
-        raise HTTPException(status_code=500, detail="Sorry, I encountered an error processing your request.")
+        print("Chat Error:", str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/history", response_class=HTMLResponse)
 async def chat_history(request: Request):
@@ -183,6 +241,13 @@ async def chat_history(request: Request):
         "request": request,
         "history": history
     })
+
+def get_cached_policies():
+    global cached_policies_text
+    if cached_policies_text is None:
+        policies = get_all_policies()
+        cached_policies_text = "\n\n---\n\n".join([p["content"] for p in policies])
+    return cached_policies_text
 
 
 if __name__ == "__main__":

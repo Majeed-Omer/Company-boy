@@ -17,7 +17,6 @@
   </div>
   <a href="/history">View My Chat History</a>
 
-
   <script>
     // Add event listener for Enter key
     document.getElementById("user-input").addEventListener("keypress", function(event) {
@@ -59,7 +58,6 @@
       const chatBox = document.getElementById("chat-box");
       const msg = document.createElement("div");
       msg.className = sender === "You" ? "user-msg" : "bot-msg";
-      // msg.innerHTML = <strong>${sender}:</strong> ${text};
       msg.innerHTML = `<strong>${sender}:</strong> ${text}`;
       chatBox.appendChild(msg);
       chatBox.scrollTop = chatBox.scrollHeight;
