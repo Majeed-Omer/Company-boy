@@ -111,21 +111,3 @@ body {
   border: none;
   border-radius: 6px;
 }
-
-
-
-
-.history-button-back {
-  display: inline-block;
-  margin-top: 10px;
-  margin-left: 10px;
-  padding: 10px 16px;
-  background: -webkit-linear-gradient(right,#003366,#004080,#0059b3
-, #0073e6);
-  color: white;
-  text-decoration: none;
-  border-radius: 6px;
-  font-size: 14px;
-  text-align: center;
-  transition: background-color 0.3s ease;
-} 
