@@ -122,59 +122,6 @@ async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login")
 
-# @app.post("/chat")
-# async def chat(request: Request):
-#     try:
-#         data = await request.json()
-#         user_message = data.get("message")
-
-#         if not user_message:
-#             raise HTTPException(status_code=400, detail="Message is required")
-
-#         # Fetch policy content from the database
-#         policies = get_all_policies()
-#         policies_text = "\n\n---\n\n".join([p["content"] for p in policies])
-
-#         # Add dynamic system prompt
-#         system_prompt = (
-#             "You are ACME Telecom's virtual assistant. Answer strictly based on the following monitoring policies:\n\n"
-#             + policies_text
-#             + "\n\nOnly respond with the approved policy information."
-#         )
-
-#         payload = {
-#             "model": MODEL_NAME,
-#             "messages": [
-#                 {"role": "system", "content": system_prompt},
-#                 {"role": "user", "content": user_message}
-#             ],
-#             "stream": False
-#         }
-
-#         response = requests.post(OLLAMA_API_URL, json=payload)
-#         response.raise_for_status()
-#         data = response.json()
-
-#         reply = data.get("message", {}).get("content", "") or data.get("response", "") or data.get("text", "")
-
-#         if not reply:
-#             return JSONResponse(content={"response": "Sorry, I didn't get a valid response from the model."}, status_code=200)
-        
-    
-#         username = request.session.get("user")
-#         if username:
-#             save_chat(username, user_message, reply)
-
-
-#         return {"response": reply}
-
-#     except requests.exceptions.RequestException as e:
-#         print("Error:", str(e))
-#         raise HTTPException(status_code=502, detail="Failed to communicate with the Ollama API")
-#     except Exception as e:
-#         print("Error:", str(e))
-#         raise HTTPException(status_code=500, detail="Sorry, I encountered an error processing your request.")
-
 @app.post("/chat")
 async def chat(request: Request):
     try:
@@ -190,15 +137,6 @@ async def chat(request: Request):
             + policies_text
             + "\n\nOnly respond with the approved policy information."
         )
-
-        # payload = {
-        #     "model": MODEL_NAME,
-        #     "messages": [
-        #         {"role": "system", "content": system_prompt},
-        #         {"role": "user", "content": user_message}
-        #     ],
-        #     "stream": False
-        # }
 
         payload = {
             "model": MODEL_NAME,
@@ -251,4 +189,4 @@ def get_cached_policies():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="localhost", port=8000, reload=True)
