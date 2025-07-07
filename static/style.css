@@ -74,17 +74,18 @@ body {
 .history-button {
   display: inline-block;
   margin-top: 10px;
-  margin-bottom: 600px;
   margin-left: 10px;
-  padding: 10px 16px;
-  background: -webkit-linear-gradient(right,#003366,#004080,#0059b3
-, #0073e6);
+  padding: 8px 14px;
+  background: -webkit-linear-gradient(right, #003366, #004080, #0059b3, #0073e6);
   color: white;
   text-decoration: none;
   border-radius: 6px;
   font-size: 14px;
+  line-height: 1;
   text-align: center;
   transition: background-color 0.3s ease;
+  height: auto;
+  max-height: 30px;
 }
 
 .history-button-back {
