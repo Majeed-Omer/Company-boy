@@ -8,14 +8,17 @@
 <body>
   
   <div class="chat-container">
-    <h2>Bot Assistant</h2>
+    <div class="chat-header">
+  <h2>Bot Assistant</h2>
+  <a href="/history" class="history-button">View My Chat History</a>
+   </div>
+
     <div class="chat-box" id="chat-box"></div>
     <div class="input-area">
       <input type="text" id="user-input" placeholder="Ask about TRM questions...">
       <button onclick="sendMessage()">Send</button>
     </div>
   </div>
-  <a href="/history" class="history-button">View My Chat History</a>
 
   <script>
     // Add event listener for Enter key

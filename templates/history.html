@@ -3,24 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <title>Chat History</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/history.css">
 </head>
 <body>
   <div class="chat-box">
-  <h2>My Chat History</h2>
-    <a href="/" class="history-button-back">← Back to Chat</a>
-  {% if history %}
-    {% for item in history %}
-      <div class="user-msg"><strong>You:</strong> {{ item.question }}</div>
-      <div class="bot-msg"><strong>Bot:</strong> {{ item.answer }}</div>
-      <div class="timestamp">{{ item.timestamp }}</div>
-      <hr>
-    {% endfor %}
-  {% else %}
-    <p>No chat history yet.</p>
-  {% endif %}
-</div>
-
+    <div class="chat-header">
+      <h2>My Chat History</h2>
+      <a href="/" class="history-button-back">← Back to Chat</a>
+    </div>
+    <div class="history-content">
+      {% if history %}
+        {% for item in history %}
+          <div class="user-msg"><strong>You:</strong> {{ item.question }}</div>
+          <div class="bot-msg"><strong>Bot:</strong> {{ item.answer }}</div>
+          <div class="timestamp">{{ item.timestamp }}</div>
+          <hr>
+        {% endfor %}
+      {% else %}
+        <p>No chat history yet.</p>
+      {% endif %}
+    </div>
   </div>
 </body>
 </html>
