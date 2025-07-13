@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -7,7 +7,7 @@ from database import get_user, create_user, verify_password, get_db_connection
 from database import get_all_policies
 from database import save_chat
 from database import get_chat_history
-from fastapi import Depends
+
 
 cached_policies_text = None
 
