@@ -50,12 +50,22 @@ async def create_user(username: str, password: str):
         cursor.close()
         conn.close()
 
+# def get_all_policies():
+#     conn = get_db_connection()
+#     cursor = conn.cursor(dictionary=True)
+#     try:
+#         cursor.execute("SELECT * FROM data")
+#         return cursor.fetchall()
+#     finally:
+#         cursor.close()
+#         conn.close()
 
 def get_all_policies():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT * FROM data")
+        # Example: Get only top 10 most recent
+        cursor.execute("SELECT * FROM data ORDER BY id DESC LIMIT 10")
         return cursor.fetchall()
     finally:
         cursor.close()

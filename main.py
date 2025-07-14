@@ -184,7 +184,12 @@ def get_cached_policies():
     global cached_policies_text
     if cached_policies_text is None:
         policies = get_all_policies()
-        cached_policies_text = "\n\n---\n\n".join([p["content"] for p in policies])
+        # cached_policies_text = "\n\n---\n\n".join([p["content"] for p in policies])
+        cached_policies_text = "\n\n---\n\n".join([
+    p["content"][:500] + "..." if len(p["content"]) > 500 else p["content"]
+    for p in policies
+])
+
     return cached_policies_text
 
 
