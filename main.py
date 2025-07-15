@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse,StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -7,7 +7,9 @@ from database import get_user, create_user, verify_password, get_db_connection
 from database import get_all_policies
 from database import save_chat
 from database import get_chat_history
-
+import json
+from threading import Thread
+import time
 
 cached_policies_text = None
 
@@ -122,6 +124,7 @@ async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login")
 
+
 @app.post("/chat")
 async def chat(request: Request):
     try:
@@ -130,43 +133,49 @@ async def chat(request: Request):
         if not user_message:
             raise HTTPException(status_code=400, detail="Message is required")
 
-        policies_text = get_cached_policies()  # ✅ Load once
+        policies_text = get_cached_policies()
 
         system_prompt = (
-            "You are ACME Telecom's virtual assistant. Answer strictly based on the following monitoring policies:\n\n"
-            + policies_text
-            + "\n\nOnly respond with the approved policy information."
+            "You are ACME Telecom's virtual assistant. "
+            "Answer strictly based on the following monitoring policies:\n\n"
+            + policies_text +
+            "\n\nOnly respond with the approved policy information."
         )
 
         payload = {
             "model": MODEL_NAME,
             "prompt": f"{system_prompt}\n\nUser: {user_message}\n\nAssistant:",
-            "stream": False
+            "stream": True
         }
 
-        # ⏱ Add timeout
-        response = requests.post(OLLAMA_API_URL, json=payload, timeout=1000)
-        response.raise_for_status()
-        data = response.json()
+        def event_stream():
+            try:
+                with requests.post(OLLAMA_API_URL, json=payload, stream=True, timeout=300) as res:
+                    res.raise_for_status()
+                    full_reply = ""
+                    for line in res.iter_lines():
+                        if line:
+                            try:
+                                parsed = json.loads(line.decode("utf-8"))
+                                token = parsed.get("response", "")
+                                full_reply += token
+                                yield f"data: {token}\n\n"
+                            except Exception as e:
+                                print("Stream parse error:", e)
+                    # Save full reply after complete stream
+                    username = request.session.get("user")
+                    if username:
+                        save_chat(username, user_message, full_reply)
+            except Exception as e:
+                print("Streaming error:", e)
+                yield f"data: [error] {str(e)}\n\n"
 
-        reply = data.get("message", {}).get("content", "") or data.get("response", "") or data.get("text", "")
-        if not reply:
-            return JSONResponse(content={"response": "Sorry, I didn't get a valid response from the model."}, status_code=200)
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-        username = request.session.get("user")
-        if username:
-            save_chat(username, user_message, reply)
-
-        return {"response": reply}
-
-    except requests.exceptions.Timeout:
-        return JSONResponse(content={"response": "The bot took too long to respond. Please try again."}, status_code=504)
-    except requests.exceptions.RequestException as e:
-        print("Ollama Error:", str(e))
-        raise HTTPException(status_code=502, detail="Failed to communicate with the Ollama API")
     except Exception as e:
         print("Chat Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.get("/history", response_class=HTMLResponse)
 async def chat_history(request: Request):
@@ -186,12 +195,32 @@ def get_cached_policies():
         policies = get_all_policies()
         # cached_policies_text = "\n\n---\n\n".join([p["content"] for p in policies])
         cached_policies_text = "\n\n---\n\n".join([
-    p["content"][:500] + "..." if len(p["content"]) > 500 else p["content"]
-    for p in policies
-])
+        p["content"][:500] + "..." if len(p["content"]) > 500 else p["content"]
+        for p in policies
+    ])
 
     return cached_policies_text
 
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+
+
+def warm_up_ollama():
+    try:
+        print("Warming up Ollama model...")
+        payload = {
+            "model": MODEL_NAME,
+            "prompt": "Hello",
+            "stream": False
+        }
+        res = requests.post(OLLAMA_API_URL, json=payload, timeout=180)
+        if res.status_code == 200:
+            print("✅ Model warmed up successfully.")
+        else:
+            print("⚠️ Model warm-up failed:", res.text)
+    except Exception as e:
+        print("🔥 Error warming up model:", e)
+
+# Trigger warm-up thread after a short delay to avoid race with server start
+Thread(target=lambda: (time.sleep(2), warm_up_ollama())).start()

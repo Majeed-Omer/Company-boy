@@ -73,7 +73,14 @@ body {
   font-size: 15px;
   line-height: 1.5;
   white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
+
+span {
+  display: inline;
+}
+
 
 .user-msg {
   background-color: #d1fae5;
