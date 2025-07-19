@@ -133,45 +133,40 @@ async def chat(request: Request):
         if not user_message:
             raise HTTPException(status_code=400, detail="Message is required")
 
-        policies_text = get_cached_policies()
+        policies_text = get_cached_policies()  # ✅ Load once
 
         system_prompt = (
-            "You are ACME Telecom's virtual assistant. "
-            "Answer strictly based on the following monitoring policies:\n\n"
-            + policies_text +
-            "\n\nOnly respond with the approved policy information."
+            "You are ACME Telecom's virtual assistant. Answer strictly based on the following monitoring policies:\n\n"
+            + policies_text
+            + "\n\nOnly respond with the approved policy information."
         )
 
         payload = {
             "model": MODEL_NAME,
             "prompt": f"{system_prompt}\n\nUser: {user_message}\n\nAssistant:",
-            "stream": True
+            "stream": False
         }
 
-        def event_stream():
-            try:
-                with requests.post(OLLAMA_API_URL, json=payload, stream=True, timeout=300) as res:
-                    res.raise_for_status()
-                    full_reply = ""
-                    for line in res.iter_lines():
-                        if line:
-                            try:
-                                parsed = json.loads(line.decode("utf-8"))
-                                token = parsed.get("response", "")
-                                full_reply += token
-                                yield f"data: {token}\n\n"
-                            except Exception as e:
-                                print("Stream parse error:", e)
-                    # Save full reply after complete stream
-                    username = request.session.get("user")
-                    if username:
-                        save_chat(username, user_message, full_reply)
-            except Exception as e:
-                print("Streaming error:", e)
-                yield f"data: [error] {str(e)}\n\n"
+        # ⏱ Add timeout
+        response = requests.post(OLLAMA_API_URL, json=payload, timeout=1000)
+        response.raise_for_status()
+        data = response.json()
 
-        return StreamingResponse(event_stream(), media_type="text/event-stream")
+        reply = data.get("message", {}).get("content", "") or data.get("response", "") or data.get("text", "")
+        if not reply:
+            return JSONResponse(content={"response": "Sorry, I didn't get a valid response from the model."}, status_code=200)
 
+        username = request.session.get("user")
+        if username:
+            save_chat(username, user_message, reply)
+
+        return {"response": reply}
+
+    except requests.exceptions.Timeout:
+        return JSONResponse(content={"response": "The bot took too long to respond. Please try again."}, status_code=504)
+    except requests.exceptions.RequestException as e:
+        print("Ollama Error:", str(e))
+        raise HTTPException(status_code=502, detail="Failed to communicate with the Ollama API")
     except Exception as e:
         print("Chat Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal server error")

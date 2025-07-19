@@ -30,83 +30,35 @@
     });
 
 async function sendMessage() {
-  const input = document.getElementById("user-input");
-  const message = input.value.trim();
-  if (!message) return;
+      const input = document.getElementById("user-input");
+      const message = input.value.trim();
+      if (!message) return;
 
-  addMessage("You", message);
-  input.value = "";
+      addMessage("You", message);
+      input.value = "";
 
-  const chatBox = document.getElementById("chat-box");
-  const msg = document.createElement("div");
-  msg.className = "bot-msg";
-  const span = document.createElement("span");
-  span.textContent = "Bot: "; // prefix once
-  msg.appendChild(span);
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
-
-  const response = await fetch("/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
-  });
-
-  if (!response.ok || !response.body) {
-    span.textContent += "Error connecting to bot.";
-    return;
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder("utf-8");
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    const parts = chunk.split("data: ").filter(Boolean);
-    for (const part of parts) {
-      const decoded = part.trim();
-     if (decoded) {
-    const lastChar = span.textContent.slice(-1);
-    const firstChar = decoded.charAt(0);
-    
-    // Special cases where we NEVER want spaces:
-    // 1. Between underscores (R_LOS)
-    // 2. Between hyphens (OSN-DWDM)
-    // 3. Between letters/numbers and underscores/hyphens
-    const isTechnicalFormat = 
-        (lastChar === '_' || firstChar === '_') ||
-        (lastChar === '-' || firstChar === '-') ||
-        (lastChar.match(/[A-Za-z0-9]/) && (firstChar === '_' || firstChar === '-')) ||
-        ((lastChar === '_' || lastChar === '-') && firstChar.match(/[A-Za-z0-9]/));
-
-    // Normal text formatting rules
-    const lastIsWordChar = /[a-zA-Z0-9]/.test(lastChar);
-    const firstIsWordChar = /[a-zA-Z0-9]/.test(firstChar);
-    const lastIsPunctuation = /[.,!?:]/.test(lastChar);
-    const firstIsPunctuation = /[.,!?:]/.test(firstChar);
-    
-    let needsSpace = false;
-    
-    if (isTechnicalFormat) {
-        needsSpace = false; // Never add spaces in technical terms
-    } else if (lastIsWordChar && firstIsWordChar) {
-        needsSpace = true;  // Between words: "hello world"
-    } else if (lastIsPunctuation && firstIsWordChar) {
-        needsSpace = true;  // After punctuation: "Hello! How"
-    } else if (lastIsWordChar && firstIsPunctuation) {
-        needsSpace = false;  // Before punctuation: "word."
-    } else if (lastIsPunctuation && firstIsPunctuation) {
-        needsSpace = false;  // Between punctuation: "!?"
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+        
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.detail || "Request failed");
+        }
+        
+        const data = await res.json();
+        addMessage("Bot", data.response);
+      } catch (error) {
+        console.error("Error:", error);
+        addMessage("Bot", error.message || "Sorry, there was an error processing your request.");
+      }
     }
-    
-    span.textContent += (needsSpace ? " " : "") + decoded;
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-    }
-  }
-}
+
+
+
 
 function addMessage(sender, text) {
   const chatBox = document.getElementById("chat-box");
