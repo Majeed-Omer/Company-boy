@@ -7,7 +7,6 @@ from database import get_user, create_user, verify_password, get_db_connection
 from database import get_all_policies
 from database import save_chat
 from database import get_chat_history
-import json
 from threading import Thread
 import time
 
@@ -170,7 +169,6 @@ async def chat(request: Request):
     except Exception as e:
         print("Chat Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
-
 
 @app.get("/history", response_class=HTMLResponse)
 async def chat_history(request: Request):
